@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from utils import mild_request, gevent_do, sleep
+from utils import api_request, gevent_do, sleep, save, is_recent_s
 import cPickle
 import os.path
 
@@ -26,7 +26,7 @@ def get_top_tracks(saved_obj={}, limit=10):
         full = True
 
     while not full:
-        obj = mild_request(service, params)
+        obj = api_request(service, params)
         tracks = obj['tracks']['track']
         if isinstance(tracks, dict):
             info = get_track_fullinfo(tracks)
@@ -74,12 +74,12 @@ def get_track_info(info, username=''):
 
     # params = params2 if use_mbid else params1
 
-    result =  mild_request(service, params)
+    result =  api_request(service, params)
     if not result or "error" in result:
         # no result
         # if use_mbid:
             # try another
-            # result = mild_request(service, params1)
+            # result = api_request(service, params1)
             # if "error" not in result:
                 # return result['track']
         print '--- get no infomation for track ---'
@@ -105,7 +105,7 @@ def get_track_shouts_num(info, limit=1, page=1):
 
     # param = params2 if use_mbid else params1
     while True:
-        result =  mild_request(service, params)
+        result =  api_request(service, params)
         if not result or "error" in result:
             print '--- get no shouts for track ---'
             return 0
@@ -136,21 +136,20 @@ def get_track_date(info):
         params['album'] = info['album']['title']
     else:
         params['album'] = info['name']
-    result =  mild_request(service, params)
+    result =  api_request(service, params)
     if not result or "error" in result:
         print '--- get no shouts for track ---'
         return ''
 
     return result['album']['releasedate']
 
+def filter_recent(tracks):
+    return filter(lambda t: t["releasedate"].strip() and is_recent_s(t["releasedate"]),
+            tracks)
 
-def save(filename, obj):
-    with open(filename, "w") as f:
-        cPickle.dump(obj, f, 2)
-        f.flush()
 
 if __name__ == "__main__":
-    save_file = "for_track.pkl"
+    save_file = "data/top_tracks.pkl"
     obj = {}
     if os.path.exists(save_file):
         f = open(save_file, "rb")
@@ -158,3 +157,7 @@ if __name__ == "__main__":
         f.close()
     failed_num = 0
     get_top_tracks(obj)
+    save_file = "data/recent_tracks.pkl"
+    recent_tracks = filter_recent(obj["tracks"])
+    save(save_file, recent_tracks)
+    
