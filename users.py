@@ -26,7 +26,7 @@ def get_user_info(username):
     return api_request(method, params)['user']
 
 
-def get_user_friends(username, limit=20, page=0):
+def get_user_friends(username, limit=50, page=0):
     friends_dict = {}
     fetch_all = False
 
@@ -145,7 +145,7 @@ def get_seed_users(tracks):
 
 def get_target_users(seed_users):
     target_users_info = {}
-    limit = 20
+    limit = 50
     new_func = functools.partial(get_user_friends, limit=limit, page=1)
     bobj = BatchRegulate(new_func, list(seed_users))
     for user in seed_users:
@@ -160,8 +160,14 @@ def get_target_users(seed_users):
         if not friends_info:
             continue
         # select only one target
-        key = random.choice(friends_info.keys())
-        target_users_info.update({key: friends_info[key]})
+        # key = random.choice(friends_info.keys())
+        # target_users_info.update({key: friends_info[key]})
+        # select 6 friends
+        if len(friends_info) >= 6:
+            keys = random.sample(friends_info, 6)
+            friends_info = {k:v for k, v in friends_info.iteritems() if k in keys}
+        target_users_info.update(friends_info)
+
 
     return target_users_info
 
@@ -243,21 +249,34 @@ if __name__ == "__main__":
         friends_info = {}
         invalid_targets = []
 
+
+        count = 0
         for name in targets_info:
             result = get_user_friends(name)
             if result is not None:
                 targets_info[name]['friend_nums'] = len(result[0])
                 target_friends[name] = result[0].keys() 
                 friends_info.update(result[0])
+                count += 1
+                if count == 1000:
+                    break
             else:
                 invalid_targets.append(name)
 
         for name in invalid_targets:
             del targets_info[name]
 
+        # if len(targets_info) > 1000:
+            # keys = random.sample(targets_info, 1000)
+            # targets_info = {k:v for k, v in targets_info.iteritems() if k in keys}
+
         save(target_data, targets_info)
+        print "--- total %d targets ---" % len(targets_info)
         save("data/target_friends.pkl", target_friends)
+        count = sum(len(fr) for fr in target_friends.itervalues())
+        print "--- all targets have %d friend counts ---" % count
         save("data/friends_info.pkl", friends_info)
+        print "--- total %d friends ---" % len(target_friends)
             
 
             

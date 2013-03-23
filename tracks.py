@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-from utils import api_request, gevent_do, sleep, save, is_recent_s
+from utils import api_request, gevent_do, save, is_recent_s
+import gevent
 import cPickle
 import os.path
 
-def get_top_tracks(saved_obj={}, limit=10):
+def get_top_tracks(saved_obj={}, limit=50):
     upper = 1000
     top_tracks = []
     service = "chart.getTopTracks"
     full = False
     count = 0
-    save_file = "for_track.pkl"
+    save_file = "data/top_tracks.pkl"
 
     if 'page' in saved_obj:
         page = saved_obj['page']
@@ -113,11 +114,18 @@ def get_track_shouts_num(info, limit=1, page=1):
         if 'shouts' in result:
             break
         elif 'status' in result and result['status'] == 'ok':
-            sleep(0.5)
+            gevent.sleep(0.5)
             pass # loop again!!!
         else:
             return 0
-    return int(result['shouts']['@attr']['total'])
+    if '@attr' in result['shouts']:
+        return int(result['shouts']['@attr']['total'])
+    elif 'total' in result['shouts']:
+        # for some new track have no shouts
+        return int(result['shouts']['total'])
+    else:
+        # just in case
+        return 0
 
     
 
@@ -145,19 +153,22 @@ def get_track_date(info):
 
 def filter_recent(tracks):
     return filter(lambda t: t["releasedate"].strip() and is_recent_s(t["releasedate"]),
-            tracks)
+            filter(None, tracks))
 
 
 if __name__ == "__main__":
     save_file = "data/top_tracks.pkl"
     obj = {}
+    # restore last progress
     if os.path.exists(save_file):
         f = open(save_file, "rb")
         obj = cPickle.load(f)
         f.close()
+
     failed_num = 0
     get_top_tracks(obj)
     save_file = "data/recent_tracks.pkl"
     recent_tracks = filter_recent(obj["tracks"])
+    print "--- get %d valid recent tracks ---" % len(recent_tracks)
     save(save_file, recent_tracks)
     

@@ -69,7 +69,10 @@ class History(object):
     def request_page(self, page):
         params = self.params
         params['page'] = page
-        result = api_request(self.method, params)["recenttracks"]["track"]
+        r = api_request(self.method, params)
+        if r is None or "recenttracks" not in r:
+            return None
+        result = r["recenttracks"]["track"]
         return result
 
     def convert_recent_info(self, recent_track):
@@ -130,15 +133,16 @@ def wirte_user_history(username, page=1):
         page += 1
 
 def count_total_record():
-    target_friends = cPickle.load(open("data/friends_info.pkl", "rb"))
-    friends_count = len(target_friends)
-    users = set(target_friends.keys())
+    # target_friends = cPickle.load(open("data/friends_info.pkl", "rb"))
+    # friends_count = len(target_friends)
+    # users = set(target_friends.keys())
     targets = cPickle.load(open("data/target_users.pkl"))
     target_count = len(targets)
-    users.update(targets.keys())
-    users = list(users)
+    users = []
+    users.extend(targets.keys())
+    # users = list(users)
     # save memory
-    target_friends = None
+    # target_friends = None
     targets = None
     count = 0
     user_count = 0
@@ -156,11 +160,11 @@ def count_total_record():
             print "--- take a breath! ---"
             time.sleep(60)
         print "count %d users --- count = %d ---" % (user_count, count)
-    print "friends_count = %d" % friends_count
+    # print "friends_count = %d" % friends_count
     print "target_count = %d" % target_count
     return count
 
 
 if __name__ == "__main__":
-    # wirte_user_history('RJ')
-    count_total_record()
+    wirte_user_history('RJ')
+    # count_total_record()

@@ -7,6 +7,7 @@ import requests
 import socket
 import time
 import cPickle
+import random
 from datetime import datetime
 from collections import deque
 
@@ -21,7 +22,7 @@ for s in _Sessions:
 def curren_time():
     return time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime())
 
-def mild_request(url, params={}, timeout=5):
+def mild_request(url, params={}, timeout=5, max_retry=10):
     session = _Queue.get()
     try_num = 1
     while True:
@@ -37,14 +38,17 @@ def mild_request(url, params={}, timeout=5):
             break
         except gevent.timeout.Timeout as e:
             if e is to:
-                if DEBUG and try_num > 10:
+                if DEBUG and try_num > max_retry:
                     print "--- now give up ---"
+                    _Queue.put(session)
                     return None
                 try_num += 1
+                gevent.sleep(random.uniform(0, 2))
             else:
                 raise # not my timeout
         except requests.ConnectionError: 
             print "--- url=%s and params=%s cause connection error ---" % (url, params)
+            _Queue.put(session)
             return None
         finally:
             to.cancel()
@@ -55,6 +59,8 @@ def mild_request(url, params={}, timeout=5):
 def api_request(method, params={}):
     url = API_REQUEST_URL % method
     r =  mild_request(url, params)
+    if r is None:
+        return None
     try:
         result = r.json()
         if "error" in result and result["error"] == 29:
@@ -69,7 +75,10 @@ def api_request(method, params={}):
         return None
 
 def dom_request(url):
-    text = mild_request(url).text
+    r = mild_request(url)
+    if r is None:
+        return None
+    text = r.text
     dom = pq(text)
     return dom
 

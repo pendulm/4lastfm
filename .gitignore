@@ -4,3 +4,4 @@
 *.py[co]
 data/*
 result/*
+backup/*
