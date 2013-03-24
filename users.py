@@ -263,6 +263,10 @@ if __name__ == "__main__":
             else:
                 invalid_targets.append(name)
 
+        for name in targets_info.keys():
+            if name not in target_friends:
+                del targets_info[name]
+
         for name in invalid_targets:
             del targets_info[name]
 
@@ -276,7 +280,7 @@ if __name__ == "__main__":
         count = sum(len(fr) for fr in target_friends.itervalues())
         print "--- all targets have %d friend counts ---" % count
         save("data/friends_info.pkl", friends_info)
-        print "--- total %d friends ---" % len(target_friends)
+        print "--- total %d friends ---" % len(friends_info)
             
 
             

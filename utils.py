@@ -8,7 +8,7 @@ import socket
 import time
 import cPickle
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import deque
 
 API_REQUEST_URL = 'http://ws.audioscrobbler.com/2.0/?method=%s&api_key=9edee2e7f91969898fa60945cd818b55&format=json'
@@ -65,8 +65,9 @@ def api_request(method, params={}):
         result = r.json()
         if "error" in result and result["error"] == 29:
             if DEBUG:
-                print "--- rate limit exceeded, now sleep 5 minutes ---"
-            gevent.sleep(5 * 60) # just breathe
+                print "--- rate limit exceeded, now sleep 10 seconds ---"
+            gevent.sleep(10) # just breathe
+            # gevent.sleep(5 * 60) # just breathe
             return api_request(method, params)
         else:
             return result # no error
@@ -88,6 +89,41 @@ def gevent_do(func, arg_list):
     jobs = [gevent.spawn(func, arg) for arg in arg_list]
     gevent.joinall(jobs)
     return [job.value for job in jobs]
+
+def pool_do(func, arg_list, cap=5):
+    pool_queue = gevent.queue.Queue()
+    result_dict = {}
+
+    def wrap1(arg, token):
+        result = func(arg)
+        result_dict[arg] = result
+        # print "arg %s finished" % arg
+        pool_queue.put(token)
+
+    def wrap(arg):
+        # print "arg %s stared" % arg
+        token = pool_queue.get()
+        task = gevent.spawn(wrap1, arg, token)
+        return task
+
+    for i in range(cap):
+        # initialize task pool
+        pool_queue.put(i)
+
+    for arg in arg_list:
+        task = wrap(arg)
+
+    if not task.ready():
+        # at most one task remain
+        task.join()
+
+    return result_dict
+
+# def test_pool_do(arg):
+    # # gevent.sleep(1)
+    # gevent.sleep(random.randint(1, 3))
+    # return arg
+
 
 class BatchRegulate(object):
     def __init__(self, func, arg_list, cap=10):
@@ -166,3 +202,16 @@ def is_recent(dt):
 
 def is_recent_s(date_string):
     return is_recent(strptime(date_string))
+
+def timestamp_of_nth_week(week, year=None):
+    if year is None:
+        year = datetime.now().year
+    first_day_of_year = datetime(year, 1, 1)
+    nth_day_of_week = first_day_of_year.weekday()
+    first_day_of_first_week = (first_day_of_year - 
+                                timedelta(days=nth_day_of_week))
+    td = timedelta(weeks=week-1)
+    day_of_week = first_day_of_first_week + td
+    epoch = datetime.fromtimestamp(0)
+    seconds = int((day_of_week - epoch).total_seconds())
+    return seconds
