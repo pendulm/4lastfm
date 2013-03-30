@@ -22,7 +22,7 @@ for s in _Sessions:
 def curren_time():
     return time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime())
 
-def mild_request(url, params={}, timeout=5, max_retry=10):
+def mild_request(url, params={}, timeout=5, max_retry=30):
     session = _Queue.get()
     try_num = 1
     while True:
@@ -158,7 +158,7 @@ class BatchRegulate(object):
         else:
             self._finished = True
             raise StopIteration
-    
+
     def append(elem):
         if not self._finished:
             self._arg_list.append(elem)
@@ -171,7 +171,7 @@ class BatchRegulate(object):
         else:
             raise RuntimeError
 
-        
+
 def save(filename, obj):
     with open(filename, "w") as f:
         cPickle.dump(obj, f, 2)
@@ -195,7 +195,7 @@ def get_n_months_ago(dt, n):
 
 def is_recent(dt):
     now = datetime.now()
-    six_months_ago = get_n_months_ago(now, 6) 
+    six_months_ago = get_n_months_ago(now, 6)
     if dt > six_months_ago:
         return True
     return False

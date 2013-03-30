@@ -23,7 +23,10 @@ seed_user = 'RJ'
 def get_user_info(username):
     method = "user.getInfo"
     params = {'user': username}
-    return api_request(method, params)['user']
+    result = api_request(method, params)
+    if result is None or 'user' not in result:
+        return None
+    return result['user']
 
 
 def get_user_friends(username, limit=50, page=0):
@@ -264,82 +267,26 @@ def get_target_friends(targets_info):
 
 
 def update_targets(week):
-    target_week_data = "data/" + ("week_%/" % week) + "target_users.pkl"
+    target_week_data = "data/" + ("week_%s/" % week) + "target_users.pkl"
     update_info = {}
+    invalid_count = 0
     with open("data/target_users.pkl") as orig:
         targets = cPickle.load(orig)
-        for t in targets:
-            update_info[t] = get_user_info(t)
+        for index, t in enumerate(targets, start=1):
+            print "--- get user=%s(%d:%d) ---" % (t, index, len(targets))
+            result = get_user_info(t)
+            if result is None:
+                invalid_count += 1
+                print "--- user=%s get invalid info ---" % t
 
-    save(update_info, target_week_data)
+            update_info[t] = result
+
+    save(target_week_data, update_info)
     print "---- update to file %s %d targets---" % (target_week_data, len(update_info))
+    print "total get %d invalid targets" % invalid_count
     return update_info
 
 
 if __name__ == "__main__":
-    # if  False:
-        # file_name = "data.pkl"
-        # USER_INFO_LOG_FILE = open("user_info.txt", "a")
-        # USER_FRIENDS_LOG_FILE = open("user_friends.txt", "a")
-
-        # if os.path.exists(file_name):
-            # restore last run
-            # with open(file_name) as f:
-                # objs = cPickle.load(f)
-                # USERS_POOL = objs['pool']
-                # FIFO_QUEUE = objs['queue']
-        # else:
-            # pool = USERS_POOL
-            # queue = FIFO_QUEUE
-            # pool.add(seed_user)
-            # queue.append(seed_user)
-        # try:
-            # reproduct()
-        # except:
-            # USER_FRIENDS_LOG_FILE.flush()
-            # USER_INFO_LOG_FILE.flush()
-            # raise
-    # target_data = "data/target_users.pkl"
-    # seed_data = "data/seed_users.pkl"
-
-    # if True:
-        # targets_info = prepare_target_users()
-
-        # target_friends = {}
-        # friends_info = {}
-        # invalid_targets = []
-
-
-        # count = 0
-        # for name in targets_info:
-            # result = get_user_friends(name)
-            # if result is not None:
-                # targets_info[name]['friend_nums'] = len(result[0])
-                # target_friends[name] = result[0].keys()
-                # friends_info.update(result[0])
-                # count += 1
-                # if count == 1000:
-                    # break
-            # else:
-                # invalid_targets.append(name)
-
-        # for name in targets_info.keys():
-            # if name not in target_friends:
-                # del targets_info[name]
-
-        # for name in invalid_targets:
-            # del targets_info[name]
-
-        # # if len(targets_info) > 1000:
-            # # keys = random.sample(targets_info, 1000)
-            # # targets_info = {k:v for k, v in targets_info.iteritems() if k in keys}
-
-        # save(target_data, targets_info)
-        # print "--- total %d targets ---" % len(targets_info)
-        # save("data/target_friends.pkl", target_friends)
-        # count = sum(len(fr) for fr in target_friends.itervalues())
-        # print "--- all targets have %d friend counts ---" % count
-        # save("data/friends_info.pkl", friends_info)
-        # print "--- total %d friends ---" % len(friends_info)
     if True:
         update_targets(13)
