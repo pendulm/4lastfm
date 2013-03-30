@@ -127,7 +127,7 @@ def get_track_shouts_num(info, limit=1, page=1):
         # just in case
         return 0
 
-    
+
 
 
 def get_track_fullinfo(info):
@@ -155,8 +155,7 @@ def filter_recent(tracks):
     return filter(lambda t: t["releasedate"].strip() and is_recent_s(t["releasedate"]),
             filter(None, tracks))
 
-
-if __name__ == "__main__":
+def get_filtered_top_tracks():
     save_file = "data/top_tracks.pkl"
     obj = {}
     # restore last progress
@@ -171,4 +170,28 @@ if __name__ == "__main__":
     recent_tracks = filter_recent(obj["tracks"])
     print "--- get %d valid recent tracks ---" % len(recent_tracks)
     save(save_file, recent_tracks)
-    
+
+def update_top_track(week):
+    target_week_data = "data/" + ("week_%s/" % week) + "top_tracks.pkl"
+    save_file = "data/recent_tracks.pkl"
+    update_info = []
+    invalid_count = 0
+    with open(save_file) as f:
+        tracks = cPickle.load(f)
+    for index, t in enumerate(tracks, start=1):
+        result = get_track_fullinfo(t)
+        print "--- update for track=%s(%d, %d) ---" % (t['name'], index, len(tracks))
+        if result is None:
+            invalid_count += 1
+            print "--- get invalid track ---"
+        update_info.append(result)
+
+    print "--- get %d invalid tracks ---" % invalid_count
+    save(target_week_data, update_info)
+
+
+
+if __name__ == "__main__":
+    if True:
+        update_top_track(13)
+
