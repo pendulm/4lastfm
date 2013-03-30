@@ -201,7 +201,80 @@ def filter_target_info(user_info):
     if age == "":
         return False
     return True
-    
+
+def prepare_target_users():
+    target_data = "data/target_users.pkl"
+    seed_data = "data/seed_users.pkl"
+
+    if os.path.exists(target_data):
+        targets_info = cPickle.load(open(target_data))
+    else:
+        if not os.path.exists(seed_data):
+            tracks = cPickle.load(open("data/recent_tracks.pkl", "rb"))
+            seeds = get_seed_users(tracks)
+            print "total %d seed users" % len(seeds)
+            save(seed_data, seeds)
+        else:
+            seeds = cPickle.load(open(seed_data))
+        targets_info = get_target_users(seeds)
+        targets_info = {k:v for k, v in targets_info.iteritems() if filter_target_info(v)}
+        print "total %d target users" % len(target_data)
+        save(target_data, targets_info)
+    return targets_info
+
+def get_target_friends(targets_info):
+    target_data = "data/target_users.pkl"
+
+    target_friends = {}
+    friends_info = {}
+    invalid_targets = []
+
+
+    count = 0
+    for name in targets_info:
+        result = get_user_friends(name)
+        if result is not None:
+            targets_info[name]['friend_nums'] = len(result[0])
+            target_friends[name] = result[0].keys()
+            friends_info.update(result[0])
+            count += 1
+            if count == 1000:
+                break
+        else:
+            invalid_targets.append(name)
+
+    for name in targets_info.keys():
+        if name not in target_friends:
+            del targets_info[name]
+
+    for name in invalid_targets:
+        del targets_info[name]
+
+    # if len(targets_info) > 1000:
+        # keys = random.sample(targets_info, 1000)
+        # targets_info = {k:v for k, v in targets_info.iteritems() if k in keys}
+
+    save(target_data, targets_info)
+    print "--- total %d targets ---" % len(targets_info)
+    save("data/target_friends.pkl", target_friends)
+    count = sum(len(fr) for fr in target_friends.itervalues())
+    print "--- all targets have %d friend counts ---" % count
+    save("data/friends_info.pkl", friends_info)
+    print "--- total %d friends ---" % len(friends_info)
+
+
+def update_targets(week):
+    target_week_data = "data/" + ("week_%/" % week) + "target_users.pkl"
+    update_info = {}
+    with open("data/target_users.pkl") as orig:
+        targets = cPickle.load(orig)
+        for t in targets:
+            update_info[t] = get_user_info(t)
+
+    save(update_info, target_week_data)
+    print "---- update to file %s %d targets---" % (target_week_data, len(update_info))
+    return update_info
+
 
 if __name__ == "__main__":
     # if  False:
@@ -226,62 +299,47 @@ if __name__ == "__main__":
             # USER_FRIENDS_LOG_FILE.flush()
             # USER_INFO_LOG_FILE.flush()
             # raise
-    target_data = "data/target_users.pkl"
-    seed_data = "data/seed_users.pkl"
+    # target_data = "data/target_users.pkl"
+    # seed_data = "data/seed_users.pkl"
 
+    # if True:
+        # targets_info = prepare_target_users()
+
+        # target_friends = {}
+        # friends_info = {}
+        # invalid_targets = []
+
+
+        # count = 0
+        # for name in targets_info:
+            # result = get_user_friends(name)
+            # if result is not None:
+                # targets_info[name]['friend_nums'] = len(result[0])
+                # target_friends[name] = result[0].keys()
+                # friends_info.update(result[0])
+                # count += 1
+                # if count == 1000:
+                    # break
+            # else:
+                # invalid_targets.append(name)
+
+        # for name in targets_info.keys():
+            # if name not in target_friends:
+                # del targets_info[name]
+
+        # for name in invalid_targets:
+            # del targets_info[name]
+
+        # # if len(targets_info) > 1000:
+            # # keys = random.sample(targets_info, 1000)
+            # # targets_info = {k:v for k, v in targets_info.iteritems() if k in keys}
+
+        # save(target_data, targets_info)
+        # print "--- total %d targets ---" % len(targets_info)
+        # save("data/target_friends.pkl", target_friends)
+        # count = sum(len(fr) for fr in target_friends.itervalues())
+        # print "--- all targets have %d friend counts ---" % count
+        # save("data/friends_info.pkl", friends_info)
+        # print "--- total %d friends ---" % len(friends_info)
     if True:
-        if os.path.exists(target_data):
-            targets_info = cPickle.load(open(target_data))
-        else:
-            if not os.path.exists(seed_data):
-                tracks = cPickle.load(open("data/recent_tracks.pkl", "rb"))
-                seeds = get_seed_users(tracks)
-                print "total %d seed users" % len(seeds)
-                save(seed_data, seeds)
-            else:
-                seeds = cPickle.load(open(seed_data))
-            targets_info = get_target_users(seeds)
-            targets_info = {k:v for k, v in targets_info.iteritems() if filter_target_info(v)}
-            print "total %d target users" % len(target_data)
-            save(target_data, targets_info)
-
-        target_friends = {}
-        friends_info = {}
-        invalid_targets = []
-
-
-        count = 0
-        for name in targets_info:
-            result = get_user_friends(name)
-            if result is not None:
-                targets_info[name]['friend_nums'] = len(result[0])
-                target_friends[name] = result[0].keys() 
-                friends_info.update(result[0])
-                count += 1
-                if count == 1000:
-                    break
-            else:
-                invalid_targets.append(name)
-
-        for name in targets_info.keys():
-            if name not in target_friends:
-                del targets_info[name]
-
-        for name in invalid_targets:
-            del targets_info[name]
-
-        # if len(targets_info) > 1000:
-            # keys = random.sample(targets_info, 1000)
-            # targets_info = {k:v for k, v in targets_info.iteritems() if k in keys}
-
-        save(target_data, targets_info)
-        print "--- total %d targets ---" % len(targets_info)
-        save("data/target_friends.pkl", target_friends)
-        count = sum(len(fr) for fr in target_friends.itervalues())
-        print "--- all targets have %d friend counts ---" % count
-        save("data/friends_info.pkl", friends_info)
-        print "--- total %d friends ---" % len(friends_info)
-            
-
-            
-
+        update_targets(13)
