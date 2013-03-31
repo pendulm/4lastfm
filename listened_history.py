@@ -66,12 +66,12 @@ class History(object):
             meta = result['@attr']
         else:
             meta = result
-            
+
         total = int(meta["total"].strip())
         return total
 
 
-    def request_page(self, page, limit=100):
+    def request_page(self, page, limit=50):
         params = self.params
         params['page'] = page
         params['limit'] = limit
@@ -109,7 +109,7 @@ def write_user_history(progress, count=[0]):
     username, page = progress
     history = History(username)
     # get total page
-    result = history.request_first(limit=100)
+    result = history.request_first(limit=50)
     if not result:
         print "--- no history of %s ---" % username
         return 0
@@ -118,13 +118,14 @@ def write_user_history(progress, count=[0]):
         meta = result['@attr']
     else:
         meta = result
-        
+
     total_page = int(meta["totalPages"].strip())
     total = int(meta["total"].strip())
     print "--- totalpage = %d total = %d ---" % (total_page, total)
 
     # page_to_fetch = []
     record_count = 0
+    problem_record = []
     while page <= total_page:
         # page_to_fetch.append(page)
 
@@ -135,12 +136,16 @@ def write_user_history(progress, count=[0]):
                 # if not rsut:
                     # continue
                 # history.write_to_db(rsut)
-        result = history.request_page(page, limit=100)
+        result = history.request_page(page, limit=50)
         print "--- now get user=%s(%d:%d/%d) page=(%d, %d) ---" % (
-                username, now_count, count[0], toatl_users, page, total_page) 
+                username, now_count, count[0], toatl_users, page, total_page)
         if result:
             record_count += history.write_to_db(result)
-                
+        else:
+            # problem url
+            problem_record.append(page)
+
+
         # save every 5 pages
         if (page % 5) == 0:
             # cursor.execute('insert or replace into meta_info values ("user", ?)', (username,))
@@ -157,7 +162,8 @@ def write_user_history(progress, count=[0]):
     conn.commit()
     del progresses[username]
     save(progresses_file, progresses)
-    return record_count
+    # return record_count
+    return problem_record
 
 def count_total_record(users):
     # target_friends = cPickle.load(open("data/friends_info.pkl", "rb"))
@@ -186,17 +192,13 @@ def count_total_record(users):
         if test == 0:
             print "--- take a breath! ---"
             time.sleep(60)
-        print "count (%d/%d) users --- tracks count = %d ---" % (user_count, users_num, count)
+        print "count (%d/%d) users=%s listened=%d --- tracks count = %d ---" % (
+                user_count, users_num, user, n, count)
     # print "friends_count = %d" % friends_count
     # print "target_count = %d" % target_count
     return count
 
-
-if __name__ == "__main__":
-    # wirte_user_history('RJ')
-    # users_file = open("data/targets_1.pkl")
-    # users = cPickle.load(users_file)
-    # count_total_record(users)
+def get_week_range_history(start, end):
     targets_file = "data/targets_1.pkl"
     if os.path.exists(progresses_file):
         # restore last progress
@@ -209,5 +211,20 @@ if __name__ == "__main__":
 
     # the 12th week of 2013 is 2013/03/18, get all recent record before this point
     History.time_range[1] = timestamp_of_nth_week(12)
-    user_record = pool_do(write_user_history, progresses.items(), cap=2) 
+    user_record = pool_do(write_user_history, progresses.items(), cap=2)
     print "total %d track records" % sum(user_record.itervalues())
+
+def redo_for_not_tracked_users():
+    users = ['ElinaKubulina', 'green_aglets']
+    History.time_range[1] = timestamp_of_nth_week(12)
+    progresses = {u:1 for u in users}
+    problem_results = pool_do(write_user_history, progresses.items(), cap=1)
+
+
+if __name__ == "__main__":
+    # wirte_user_history('RJ')
+    # users_file = open("data/targets_1.pkl")
+    # users = cPickle.load(users_file)
+    # count_total_record(users)
+    redo_for_not_tracked_users()
+
