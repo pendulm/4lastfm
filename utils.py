@@ -46,7 +46,7 @@ def mild_request(url, params={}, timeout=5, max_retry=30):
                 gevent.sleep(random.uniform(0, 2))
             else:
                 raise # not my timeout
-        except requests.ConnectionError: 
+        except requests.ConnectionError:
             print "--- url=%s and params=%s cause connection error ---" % (url, params)
             _Queue.put(session)
             return None
@@ -63,12 +63,18 @@ def api_request(method, params={}):
         return None
     try:
         result = r.json()
-        if "error" in result and result["error"] == 29:
-            if DEBUG:
-                print "--- rate limit exceeded, now sleep 10 seconds ---"
-            gevent.sleep(10) # just breathe
-            # gevent.sleep(5 * 60) # just breathe
-            return api_request(method, params)
+        if "error" in result:
+            if result["error"] == 29:
+                if DEBUG:
+                    print "--- rate limit exceeded, now sleep 10 seconds ---"
+                gevent.sleep(10) # just breathe
+                # gevent.sleep(5 * 60) # just breathe
+                return api_request(method, params)
+            else:
+                # error = 4
+                # error = 6
+                # ...
+                return None
         else:
             return result # no error
     except ValueError:
@@ -113,6 +119,7 @@ def pool_do(func, arg_list, cap=5):
     for arg in arg_list:
         task = wrap(arg)
 
+    # if arg_list is empty this will raise UnBound
     if not task.ready():
         # at most one task remain
         task.join()

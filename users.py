@@ -2,6 +2,7 @@
 import requests
 from collections import deque
 from utils import mild_request, api_request, dom_request, gevent_do, save, BatchRegulate
+from utils import pool_do
 from pyquery import PyQuery as pq
 import random
 import json
@@ -58,16 +59,18 @@ def get_user_friends(username, limit=50, page=0):
             last_page = int(attr['totalPages'])
             if total_friends > 200:
                 # pass this user
+                # too many friends
                 return None
             if isinstance(obj['user'], dict):
                 u = obj['user']
-                friends_dict[u['name']] = u 
+                friends_dict[u['name']] = u
             else:
                 for u in obj['user']:
                     friends_dict[u['name']] = u
-            
+
             page += 1
             if len(friends_dict) > 1000 or not fetch_all or page > last_page:
+                # just return the result
                 return (friends_dict, total_friends)
                 break
 
@@ -199,10 +202,24 @@ def log_friends_info(user_info_dict, user_info_log_file):
 def filter_target_info(user_info):
     gender = user_info['gender'].strip()
     age = user_info['age'].strip()
+    name = user_info['name'].strip()
     if gender == "" or gender == "n":
         return False
     if age == "":
         return False
+
+    # private listen or no history
+    params = {'user': name, 'limit': 1, 'page': 1}
+    method = "user.getRecentTracks"
+    result = api_request(method, params)
+    if result is None:
+        return False
+
+    # friends too much or something in friends fetching error
+    result = get_user_friends(name, limit=1, page=1)
+    if result is None:
+        return False
+
     return True
 
 def prepare_target_users():
@@ -287,6 +304,72 @@ def update_targets(week):
     return update_info
 
 
+def get_random_target_from_seed(seed, num):
+    limit = 50
+    result = get_user_friends(seed, limit=limit, page=1)
+    if result is None:
+        return None
+    info, total = result
+    sample_num = min(num, len(info))
+    select = random.sample(info, sample_num)
+    return {k:v for k, v in info.iteritems() if k in select}
+
+
+def get_n_valid_targets(n):
+    target_data = "data/cut_target_users.pkl"
+    seed_data = "data/seed_users.pkl"
+    target_users = cPickle.load(open(target_data))
+    seed_users = cPickle.load(open(seed_data))
+    exclude = seed_users | set(target_users.keys())
+    target_users = None
+    count = 0
+    new_targets_info = {}
+    while count < n:
+        seed = random.sample(seed_users, 1)[0]
+        num = random.randint(1, 6)
+        friends_info = get_random_target_from_seed(seed, num)
+        if friends_info is None:
+            continue
+        for f in friends_info:
+            if f not in exclude and filter_target_info(friends_info[f]):
+                new_targets_info[f] = friends_info[f]
+                count += 1
+                print "--- get %d:%d user=%s ---" % (count, n, f)
+                if count == n:
+                    break
+
+    return new_targets_info
+
+
+
 if __name__ == "__main__":
     if True:
-        update_targets(13)
+
+        lonely_targets = []
+        friends_info = {}
+        target_friends = {}
+
+        extra_targets = list(cPickle.load(open("data/target_users_need_get_friends.pkl")))
+        # result = pool_do(get_user_friends, extra_targets, cap=1)
+        # for (target, friends) in result.iteritems():
+            # if friends is None:
+                # lonely_targets.append(target)
+                # print "---%s is lonely ---" % target
+            # else:
+                # friends_dict, _ = friends
+                # friends_info.update(friends_dict)
+                # target_friends[target] = friends_dict.keys()
+        for target in extra_targets:
+            result = get_user_friends(target)
+            if result is None:
+                lonely_targets.append(target)
+                print "---%s is lonely ---" % target
+            else:
+                friends_dict, _ = result
+                friends_info.update(friends_dict)
+                target_friends[target] = friends_dict.keys()
+
+
+        save("lonely_targets.pkl", lonely_targets)
+        save("new_friends_info.pkl", friends_info)
+        save("new_target_friends.pkl", target_friends)

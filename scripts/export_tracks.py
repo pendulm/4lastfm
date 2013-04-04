@@ -1,11 +1,12 @@
 import csv
 import json
 import cPickle
+from utils import is_recent, strptime
 field_name = ['id', 'name', 'url', 'artist', 'duration', 'listeners', 'playcount',
       'streamable', 'total_shouts', 'releasedate']
 
-f = open("../data/for_track.pkl", "rb")
-tracks = cPickle.load(f)['tracks']
+f = open("../data/recent_tracks.pkl", "rb")
+tracks = cPickle.load(f)
 
 with open('../results/tracks_info.csv', 'wb') as csvfile:
     w = csv.DictWriter(csvfile, field_name, extrasaction='ignore')
