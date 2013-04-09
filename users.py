@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
-import requests
 from collections import deque
-from utils import mild_request, api_request, dom_request, gevent_do, save, BatchRegulate
-from utils import pool_do
+from utils import api_request, dom_request, gevent_do, save, BatchRegulate
 from pyquery import PyQuery as pq
 import random
 import json
-import sys
 import os.path
-import socket
 import cPickle
-import time
 import functools
 
 USERS_POOL = set()
@@ -51,7 +46,7 @@ def get_user_friends(username, limit=50, page=0):
             obj = result['friends']
         else:
             return None
-        if page == 1 and 'user' not in obj: # no friends
+        if page == 1 and 'user' not in obj:  # no friends
             return (friends_dict, 0)
         else:
             attr = obj['@attr']
@@ -75,67 +70,13 @@ def get_user_friends(username, limit=50, page=0):
                 break
 
 
-
-# def handle_each_user(username):
-    # print "--- now for user=%s ---" % username
-    # friends_info_dict = get_user_friends(username)
-    # friends_list = map(str, friends_info_dict.keys())
-    # friends_set = set(friends_list)
-    # new_user = friends_set - USERS_POOL
-    # old_user = friends_set - new_user
-    # for u in old_user:
-        # del friends_info_dict[u]
-    # USERS_POOL.update(new_user)
-    # FIFO_QUEUE.extend(new_user)
-    # log_user_friends(username, friends_list,
-            # USER_FRIENDS_LOG_FILE)
-    # log_friends_info(friends_info_dict, USER_INFO_LOG_FILE)
-    # return new_user
-
-
-# def get_recent_tracks(username, page=0, limit=10, extended=1):
-    # url = API_REQUEST_URL % "user.getRecentTracks"
-    # if page == 0:
-        # page = 1
-        # fetch_all = True
-    # params = {'user': username, 'limit': limit, "page": page, "extended": extended}
-
-
-# def persistence():
-    # objs = {'pool': USERS_POOL, 'queue': FIFO_QUEUE}
-    # file_name = "data.pkl"
-    # f = open(file_name, "w")
-    # cPickle.dump(objs, f, 2)
-    # f.close()
-
-
-# def reproduct():
-    # queue = FIFO_QUEUE
-    # pool = USERS_POOL
-    # num_logged_info_users = len(USERS_POOL)
-    # while len(queue):
-        # if num_logged_info_users > 100000:
-            # print "The users is enough!"
-            # break
-        # head = queue.popleft()
-        # head = str(head)  # json.loads get unicode
-        # log all new user info in friends and log all friends 
-        # num_logged_info_users += len(handle_each_user(head))
-        # persistence()
-        # if DEBUG:
-            # print "--- now have %d user_infos ---" % num_logged_info_users
-    # if DEBUG and not len(queue):
-        # print "--- converged!!! ---"
-    # if num_logged_info_users > 100000:
-        # persistence()
-
-
 def get_listening_now_users(track_url):
     url = track_url + '/+listeners'
     dom = dom_request(url)
     li_list = dom(".usersMedium:eq(0) > li")
     user_list = li_list.map(lambda i, e: pq(e)("a:eq(0)").text())
     return user_list
+
 
 def get_seed_users(tracks):
     seed_users = set()
@@ -148,6 +89,7 @@ def get_seed_users(tracks):
                 seed_users.update(set(group))
             tmp = []
     return seed_users
+
 
 def get_target_users(seed_users):
     target_users_info = {}
@@ -162,7 +104,8 @@ def get_target_users(seed_users):
         else:
             continue
         # python 2.7, target not in seed
-        friends_info = {k:v for k, v in friends_info.iteritems() if k not in seed_users}
+        friends_info = {k: v for k, v in friends_info.iteritems()
+                        if k not in seed_users}
         if not friends_info:
             continue
         # select only one target
@@ -171,9 +114,9 @@ def get_target_users(seed_users):
         # select 6 friends
         if len(friends_info) >= 6:
             keys = random.sample(friends_info, 6)
-            friends_info = {k:v for k, v in friends_info.iteritems() if k in keys}
+            friends_info = {k: v for k, v in friends_info.iteritems()
+                            if k in keys}
         target_users_info.update(friends_info)
-
 
     return target_users_info
 
@@ -185,19 +128,24 @@ def log_seed_users(users, seed_users_log_file):
     elif isinstance(users, (str, unicode)):
         print >> seed_users_log_file, users
 
+
 def log_target_users():
     pass
 
+
 def log_user_info(user_info, userinfo_log_file):
     print >> userinfo_log_file, user_info
+
 
 def log_user_friends(user, friends, friends_log_file):
     for f in friends:
         print >> friends_log_file, user, f
 
+
 def log_friends_info(user_info_dict, user_info_log_file):
     for u in user_info_dict:
         print >> user_info_log_file, json.dumps(user_info_dict[u])
+
 
 def filter_target_info(user_info):
     gender = user_info['gender'].strip()
@@ -222,6 +170,7 @@ def filter_target_info(user_info):
 
     return True
 
+
 def prepare_target_users():
     target_data = "data/target_users.pkl"
     seed_data = "data/seed_users.pkl"
@@ -237,10 +186,12 @@ def prepare_target_users():
         else:
             seeds = cPickle.load(open(seed_data))
         targets_info = get_target_users(seeds)
-        targets_info = {k:v for k, v in targets_info.iteritems() if filter_target_info(v)}
+        targets_info = {k: v for k, v in targets_info.iteritems()
+                        if filter_target_info(v)}
         print "total %d target users" % len(target_data)
         save(target_data, targets_info)
     return targets_info
+
 
 def get_target_friends(targets_info):
     target_data = "data/target_users.pkl"
@@ -248,7 +199,6 @@ def get_target_friends(targets_info):
     target_friends = {}
     friends_info = {}
     invalid_targets = []
-
 
     count = 0
     for name in targets_info:
@@ -272,7 +222,8 @@ def get_target_friends(targets_info):
 
     # if len(targets_info) > 1000:
         # keys = random.sample(targets_info, 1000)
-        # targets_info = {k:v for k, v in targets_info.iteritems() if k in keys}
+        # targets_info = {k: v for k, v in targets_info.iteritems()
+        # if k in keys}
 
     save(target_data, targets_info)
     print "--- total %d targets ---" % len(targets_info)
@@ -299,7 +250,8 @@ def update_targets(week):
             update_info[t] = result
 
     save(target_week_data, update_info)
-    print "---- update to file %s %d targets---" % (target_week_data, len(update_info))
+    print "---- update to file %s %d targets---" % (
+        target_week_data, len(update_info))
     print "total get %d invalid targets" % invalid_count
     return update_info
 
@@ -312,7 +264,7 @@ def get_random_target_from_seed(seed, num):
     info, total = result
     sample_num = min(num, len(info))
     select = random.sample(info, sample_num)
-    return {k:v for k, v in info.iteritems() if k in select}
+    return {k: v for k, v in info.iteritems() if k in select}
 
 
 def get_n_valid_targets(n):
@@ -341,15 +293,14 @@ def get_n_valid_targets(n):
     return new_targets_info
 
 
-
 if __name__ == "__main__":
     if True:
-
         lonely_targets = []
         friends_info = {}
         target_friends = {}
 
-        extra_targets = list(cPickle.load(open("data/target_users_need_get_friends.pkl")))
+        extra_targets = list(cPickle.load(
+            open("data/target_users_need_get_friends.pkl")))
         # result = pool_do(get_user_friends, extra_targets, cap=1)
         # for (target, friends) in result.iteritems():
             # if friends is None:
@@ -368,7 +319,6 @@ if __name__ == "__main__":
                 friends_dict, _ = result
                 friends_info.update(friends_dict)
                 target_friends[target] = friends_dict.keys()
-
 
         save("lonely_targets.pkl", lonely_targets)
         save("new_friends_info.pkl", friends_info)

@@ -4,15 +4,14 @@ from gevent import monkey; monkey.patch_all(thread=False, select=False)
 import gevent.queue
 from pyquery import PyQuery as pq
 import requests
+import socket
 import time
 import cPickle
 import random
 from datetime import datetime, timedelta
 from collections import deque
-from config import lastfmtoken
 
-API_REQUEST_URL = 'http://ws.audioscrobbler.com/2.0/?method=%s\
-&api_key=%s&format=json' % lastfmtoken
+API_REQUEST_URL = 'http://ws.audioscrobbler.com/2.0/?method=%s&api_key=9edee2e7f91969898fa60945cd818b55&format=json'
 DEBUG = True
 _Sessions = [requests.session() for i in range(10)]
 _Queue = gevent.queue.Queue()
@@ -22,7 +21,6 @@ for s in _Sessions:
 
 def curren_time():
     return time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime())
-
 
 def mild_request(url, params={}, timeout=5, max_retry=30):
     session = _Queue.get()
@@ -47,10 +45,9 @@ def mild_request(url, params={}, timeout=5, max_retry=30):
                 try_num += 1
                 gevent.sleep(random.uniform(0, 2))
             else:
-                raise  # not my timeout
-        except requests.ConnectionError:
-            print "--- url=%s and params=%s cause connection error ---" % (
-                url, params)
+                raise # not my timeout
+        except requests.ConnectionError: 
+            print "--- url=%s and params=%s cause connection error ---" % (url, params)
             _Queue.put(session)
             return None
         finally:
@@ -61,29 +58,22 @@ def mild_request(url, params={}, timeout=5, max_retry=30):
 
 def api_request(method, params={}):
     url = API_REQUEST_URL % method
-    r = mild_request(url, params)
+    r =  mild_request(url, params)
     if r is None:
         return None
     try:
         result = r.json()
-        if "error" in result:
-            if result["error"] == 29:
-                if DEBUG:
-                    print "--- rate limit exceeded, now sleep 10 seconds ---"
-                gevent.sleep(10)  # just breathe
-                # gevent.sleep(5 * 60) # just breathe
-                return api_request(method, params)
-            else:
-                # error = 4
-                # error = 6
-                # ...
-                return None
+        if "error" in result and result["error"] == 29:
+            if DEBUG:
+                print "--- rate limit exceeded, now sleep 10 seconds ---"
+            gevent.sleep(10) # just breathe
+            # gevent.sleep(5 * 60) # just breathe
+            return api_request(method, params)
         else:
-            return result  # no error
+            return result # no error
     except ValueError:
         # error in json parse
         return None
-
 
 def dom_request(url):
     r = mild_request(url)
@@ -99,7 +89,6 @@ def gevent_do(func, arg_list):
     jobs = [gevent.spawn(func, arg) for arg in arg_list]
     gevent.joinall(jobs)
     return [job.value for job in jobs]
-
 
 def pool_do(func, arg_list, cap=5):
     pool_queue = gevent.queue.Queue()
@@ -124,7 +113,6 @@ def pool_do(func, arg_list, cap=5):
     for arg in arg_list:
         task = wrap(arg)
 
-    # if arg_list is empty this will raise UnBound
     if not task.ready():
         # at most one task remain
         task.join()
@@ -140,7 +128,7 @@ def pool_do(func, arg_list, cap=5):
 class BatchRegulate(object):
     def __init__(self, func, arg_list, cap=10):
         self._func = func
-        self._arg_list = arg_list  # arg_list must be list
+        self._arg_list = arg_list # arg_list must be list
         self._index = 0
         self._finished = False
         self._result = deque()
@@ -171,15 +159,15 @@ class BatchRegulate(object):
             self._finished = True
             raise StopIteration
 
-    def append(self, elem):
+    def append(elem):
         if not self._finished:
             self._arg_list.append(elem)
         else:
             raise RuntimeError
 
-    def extend(self, elems):
+    def extend(elems):
         if not self._finished:
-            self._arg_list.extend(elems)
+            self._arg_list.extend(elem)
         else:
             raise RuntimeError
 
@@ -188,7 +176,6 @@ def save(filename, obj):
     with open(filename, "w") as f:
         cPickle.dump(obj, f, 2)
         f.flush()
-
 
 def strptime(date_string, time_format="%d %b %Y, %H:%M"):
     date_string = str(date_string.strip())
@@ -206,7 +193,6 @@ def get_n_months_ago(dt, n):
         month = 12
     return datetime(year, month, day)
 
-
 def is_recent(dt):
     now = datetime.now()
     six_months_ago = get_n_months_ago(now, 6)
@@ -214,18 +200,16 @@ def is_recent(dt):
         return True
     return False
 
-
 def is_recent_s(date_string):
     return is_recent(strptime(date_string))
-
 
 def timestamp_of_nth_week(week, year=None):
     if year is None:
         year = datetime.now().year
     first_day_of_year = datetime(year, 1, 1)
     nth_day_of_week = first_day_of_year.weekday()
-    first_day_of_first_week = (first_day_of_year -
-                               timedelta(days=nth_day_of_week))
+    first_day_of_first_week = (first_day_of_year - 
+                                timedelta(days=nth_day_of_week))
     td = timedelta(weeks=week-1)
     day_of_week = first_day_of_first_week + td
     epoch = datetime.fromtimestamp(0)
