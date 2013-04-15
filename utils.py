@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 from collections import deque
 from config import lastfmtoken
 
-API_REQUEST_URL = 'http://ws.audioscrobbler.com/2.0/?method=%s\
-&api_key=%s&format=json' % lastfmtoken
+API_REQUEST_URL = ('http://ws.audioscrobbler.com/2.0/?method=%%s\
+&api_key=%s&format=json') % lastfmtoken
 DEBUG = True
 _Sessions = [requests.session() for i in range(10)]
 _Queue = gevent.queue.Queue()

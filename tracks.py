@@ -173,7 +173,7 @@ def get_filtered_top_tracks():
 
 def update_top_track(week):
     target_week_data = "data/" + ("week_%s/" % week) + "top_tracks.pkl"
-    save_file = "data/recent_tracks.pkl"
+    save_file = "data/tracks_info.pkl"
     update_info = []
     invalid_count = 0
     with open(save_file) as f:
@@ -193,5 +193,5 @@ def update_top_track(week):
 
 if __name__ == "__main__":
     if True:
-        update_top_track(13)
+        update_top_track(14)
 
