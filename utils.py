@@ -131,6 +131,32 @@ def pool_do(func, arg_list, cap=5):
 
     return result_dict
 
+
+def iter_pool_do(func, arg_list, cap=5):
+    # well, i'm not sure there isn't bug in this...
+    pool_queue = gevent.queue.Queue(maxsize=cap)
+    seat_avail = cap
+    yield_cnt = 0
+    dispathed = 0
+
+    def wrap(arg):
+        pool_queue.put([arg, func(arg)])
+
+    while dispathed != len(arg_list):
+        if seat_avail > 0:
+            seat_avail -= 1
+            gevent.spawn(wrap, arg_list[dispathed])
+            dispathed += 1
+        else:
+            yield pool_queue.get()
+            seat_avail += 1
+            yield_cnt += 1
+
+    while yield_cnt != len(arg_list):
+        yield pool_queue.get()
+        yield_cnt += 1
+
+
 # def test_pool_do(arg):
     # # gevent.sleep(1)
     # gevent.sleep(random.randint(1, 3))

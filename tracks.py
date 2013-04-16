@@ -172,7 +172,7 @@ def get_filtered_top_tracks():
     save(save_file, recent_tracks)
 
 def update_top_track(week):
-    target_week_data = "data/" + ("week_%s/" % week) + "top_tracks.pkl"
+    target_week_data = "data/" + ("week_%s/" % week) + "tracks.pkl"
     save_file = "data/tracks_info.pkl"
     update_info = []
     invalid_count = 0
@@ -187,11 +187,12 @@ def update_top_track(week):
         update_info.append(result)
 
     print "--- get %d invalid tracks ---" % invalid_count
+    print "--- save to file %s ---" % target_week_data
     save(target_week_data, update_info)
 
 
 
 if __name__ == "__main__":
     if True:
-        update_top_track(14)
+        update_top_track(18)
 

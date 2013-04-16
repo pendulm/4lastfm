@@ -236,23 +236,37 @@ def get_target_friends(targets_info):
 
 def update_targets(week):
     target_week_data = "data/" + ("week_%s/" % week) + "target_users.pkl"
+    invalid_week_data = "data/" + ("week_%s/" % week) + "invalid_users.pkl"
     update_info = {}
-    invalid_count = 0
+    invalid_users = []
     with open("data/target_users.pkl") as orig:
         targets = cPickle.load(orig)
-        for index, t in enumerate(targets, start=1):
-            print "--- get user=%s(%d:%d) ---" % (t, index, len(targets))
-            result = get_user_info(t)
-            if result is None:
-                invalid_count += 1
-                print "--- user=%s get invalid info ---" % t
+        # for index, t in enumerate(targets, start=1):
+            # print "--- get user=%s(%d:%d) ---" % (t, index, len(targets))
+            # result = get_user_info(t)
+            # if result is None:
+                # print "--- user=%s get invalid info ---" % t
+                # invalid_users.append(t)
 
-            update_info[t] = result
+            # update_info[t] = result
+        from utils import iter_pool_do
+        info_iter = iter_pool_do(get_user_info, targets.keys())
+        index = 1
+        for name, info in info_iter:
+            print "--- get user=%s(%d:%d) ---" % (name, index, len(targets))
+            if info is None:
+                print "--- user=%s get invalid info ---" % name
+                invalid_users.append(t)
 
-    save(target_week_data, update_info)
+            update_info[name] = info
+            index += 1
+
     print "---- update to file %s %d targets---" % (
         target_week_data, len(update_info))
-    print "total get %d invalid targets" % invalid_count
+    save(target_week_data, update_info)
+    print "---- update to file %s %d invalids---" % (
+        invalid_week_data, len(invalid_users))
+    save(invalid_week_data, invalid_users)
     return update_info
 
 
@@ -295,31 +309,32 @@ def get_n_valid_targets(n):
 
 if __name__ == "__main__":
     if True:
-        lonely_targets = []
-        friends_info = {}
-        target_friends = {}
+        # lonely_targets = []
+        # friends_info = {}
+        # target_friends = {}
 
-        extra_targets = list(cPickle.load(
-            open("data/target_users_need_get_friends.pkl")))
-        # result = pool_do(get_user_friends, extra_targets, cap=1)
-        # for (target, friends) in result.iteritems():
-            # if friends is None:
+        # extra_targets = list(cPickle.load(
+            # open("data/target_users_need_get_friends.pkl")))
+        # # result = pool_do(get_user_friends, extra_targets, cap=1)
+        # # for (target, friends) in result.iteritems():
+            # # if friends is None:
+                # # lonely_targets.append(target)
+                # # print "---%s is lonely ---" % target
+            # # else:
+                # # friends_dict, _ = friends
+                # # friends_info.update(friends_dict)
+                # # target_friends[target] = friends_dict.keys()
+        # for target in extra_targets:
+            # result = get_user_friends(target)
+            # if result is None:
                 # lonely_targets.append(target)
                 # print "---%s is lonely ---" % target
             # else:
-                # friends_dict, _ = friends
+                # friends_dict, _ = result
                 # friends_info.update(friends_dict)
                 # target_friends[target] = friends_dict.keys()
-        for target in extra_targets:
-            result = get_user_friends(target)
-            if result is None:
-                lonely_targets.append(target)
-                print "---%s is lonely ---" % target
-            else:
-                friends_dict, _ = result
-                friends_info.update(friends_dict)
-                target_friends[target] = friends_dict.keys()
 
-        save("lonely_targets.pkl", lonely_targets)
-        save("new_friends_info.pkl", friends_info)
-        save("new_target_friends.pkl", target_friends)
+        # save("lonely_targets.pkl", lonely_targets)
+        # save("new_friends_info.pkl", friends_info)
+        # save("new_target_friends.pkl", target_friends)
+        update_targets(18)
