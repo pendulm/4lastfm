@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
             # for index3, friend in enumerate(friends, start=1):
             func = functools.partial(friend_like, track, artist)
-            generator = iter_pool_do(func, filted_friends)
+            generator = iter_pool_do(func, filted_friends, cap=10)
             index3 = 1
             for friend, result in generator:
                 # if friend in already_fetched:
@@ -127,7 +127,10 @@ if __name__ == '__main__':
                         already_fetched.add(friend)
                 else:
                     # log this
-                    print >> error_file, "(%s) (%s) (%s)" % (track, target, friend)
+                    print >> error_file, "(%s) (%s) (%s)" % (track.encode('utf-8'),
+                                                             target.encode('utf-8'),
+                                                             friend.encode('utf-8'))
+                    error_file.flush()
                 index3 += 1
 
             # save what?

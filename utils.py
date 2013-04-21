@@ -24,7 +24,7 @@ def curren_time():
     return time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime())
 
 
-def mild_request(url, params={}, timeout=5, max_retry=30):
+def mild_request(url, params={}, timeout=5, max_retry=10):
     session = _Queue.get()
     try_num = 1
     while True:
