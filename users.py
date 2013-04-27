@@ -256,7 +256,7 @@ def update_targets(week):
             print "--- get user=%s(%d:%d) ---" % (name, index, len(targets))
             if info is None:
                 print "--- user=%s get invalid info ---" % name
-                invalid_users.append(t)
+                invalid_users.append(name)
 
             update_info[name] = info
             index += 1
@@ -337,4 +337,4 @@ if __name__ == "__main__":
         # save("lonely_targets.pkl", lonely_targets)
         # save("new_friends_info.pkl", friends_info)
         # save("new_target_friends.pkl", target_friends)
-        update_targets(18)
+        update_targets(17)
