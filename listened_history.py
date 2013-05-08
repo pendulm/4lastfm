@@ -204,7 +204,19 @@ def get_week_range_history(targets_file):#, start, end):
     save("data/problem_url.pkl", problem_record)
 
 
+# TODO eliminate global
 if __name__ == "__main__":
-    get_week_range_history("data/idontknowname")
-    # TODO eliminate global
+    tracks_file = 'data/tracks_info.pkl'
+    tracks_info = cPickle.load(open(tracks_file))
+
+    from utils import get_track_releasetime, timestamp_of_nth_week
+    start_timestamp = min(get_track_releasetime(t) for t in tracks_info)
+    end_timestamp = timestamp_of_nth_week(19)
+    History.time_range = [start_timestamp, end_timestamp]
+
+    target_friends = cPickle.load(open("data/week_b12/target_friends.pkl"))
+    all_friends = set()
+    for t, fs in target_friends.iteritems():
+        all_friends.update(fs)
+    count_total_record(list(all_friends))
 

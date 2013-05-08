@@ -337,4 +337,4 @@ if __name__ == "__main__":
         # save("lonely_targets.pkl", lonely_targets)
         # save("new_friends_info.pkl", friends_info)
         # save("new_target_friends.pkl", target_friends)
-        update_targets(17)
+        update_targets(18)

@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from utils import api_request, save, iter_pool_do
+from utils import api_request, save, iter_pool_do, get_track_releasetime
 from functools import wraps
 import cPickle as pickle
 import sqlite3
@@ -8,19 +8,6 @@ import os.path
 import functools
 import time
 
-CONN = sqlite3.connect('data/friends_listened.db')
-CURSOR = CONN.cursor()
-CURSOR.executescript("""
-    create table if not exists playcount_and_love (
-        target,
-        friendname,
-        track,
-        artist,
-        playcount,
-        loved,
-        timestamp
-    );
-""")
 
 
 def friend_like(track, artist, friend):
@@ -68,7 +55,21 @@ def get_target_friends(target):
 
 
 
-if __name__ == '__main__':
+def get_playcount_and_love():
+    CONN = sqlite3.connect('data/friends_listened.db')
+    CURSOR = CONN.cursor()
+    CURSOR.executescript("""
+        create table if not exists playcount_and_love (
+            target,
+            friendname,
+            track,
+            artist,
+            playcount,
+            loved,
+            timestamp
+        );
+    """)
+
     targets = get_targets()
     tracks = get_tracks()
 
@@ -149,3 +150,79 @@ if __name__ == '__main__':
         already_fetched = set()
         next_index2 = 0
 
+
+def get_all_friends():
+    target_friends = pickle.load(open("data/week_b12/target_friends.pkl"))
+    all_friends = set()
+    for t, fs in target_friends.iteritems():
+        all_friends.update(fs)
+    return all_friends
+
+
+def get_friends_history():
+    conn = sqlite3.connect('data/friends_listened_history.db')
+    cursor = conn.cursor()
+    cursor.executescript("""
+        create table if not exists history (
+            user,
+            track,
+            artist,
+            streamable,
+            album,
+            url,
+            loved,
+            datetime
+        );
+    """)
+    friends = get_all_friends()
+    tracks = get_tracks()
+    # week 19 means before 6 May
+    end_timestamp = timestamp_of_nth_week(19)
+
+    save_file = 'tmp/save_for_friends_history.pkl'
+    range_file = 'tmp/save_for_time_range.pkl'
+
+    if os.path.exists(save_file):
+        obj = pickle.load(open(save_file))
+        last_index1 = obj['index1']
+        next_index2 = obj['index2']
+        already_fetched = obj['already']
+
+        range_obj = pickle.load(open(range_file))
+        history_time_range = range_obj['history_time_range']
+    else:
+        last_index1 = 0
+        next_index2 = 0
+        already_fetched = set()
+        history_time_range = {}
+        current_time_range = {}
+
+    for index1, friend in enumerate(friends[last_index1:], start=1+last_index1):
+        time_range = (end_timestamp, end_timestamp)
+        for index2, track in enumerate(tracks[next_index2:], start=1+next_index2):
+            begin_timestamp = get_track_releasetime(track)
+            track_range = (begin_timestamp, end_timestamp)
+
+            update_history(friend, track_range, time_range, cursor)
+
+            save_obj = {
+                'index1': index1-1,
+                'index2': index2,
+            }
+
+            connection.commit()
+            save(save_file, save_obj)
+        # prepare for next track
+        next_index2 = 0
+
+def update_history(user, new_range, old_range, cursor):
+    new_left, new_right = new_range
+    old_left, old_right = old_range
+    if new_left < old_left:
+        fetch_range(new_left, old_left)
+    if new_right > old_right:
+        fetch_range(old_right, new_right)
+
+
+if __name__ == '__main__':
+    get_playcount_and_love()

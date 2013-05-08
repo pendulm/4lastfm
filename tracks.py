@@ -194,5 +194,5 @@ def update_top_track(week):
 
 if __name__ == "__main__":
     if True:
-        update_top_track(17)
+        update_top_track(18)
 

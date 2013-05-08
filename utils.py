@@ -221,6 +221,13 @@ def strptime(date_string, time_format="%d %b %Y, %H:%M"):
     return datetime.strptime(date_string, time_format)
 
 
+def timestamp(date_string):
+    dt = strptime(date_string)
+    epoch = datetime.fromtimestamp(0)
+    seconds = int((dt - epoch).total_seconds())
+    return seconds
+
+
 def get_n_months_ago(dt, n):
     year = dt.year
     month = dt.month
@@ -257,3 +264,6 @@ def timestamp_of_nth_week(week, year=None):
     epoch = datetime.fromtimestamp(0)
     seconds = int((day_of_week - epoch).total_seconds())
     return seconds
+
+def get_track_releasetime(track):
+    return timestamp(track['releasedate'])
