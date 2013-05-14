@@ -58,6 +58,15 @@ def mild_request(url, params={}, timeout=5, max_retry=10):
     _Queue.put(session)
     return r
 
+def request_url(method, params={}):
+    url = API_REQUEST_URL % method
+    req = requests.Request()
+    req.method = 'GET'
+    req.url = url
+    req.params = params
+    prep = req.prepare()
+    return prep.url
+
 
 def api_request(method, params={}):
     url = API_REQUEST_URL % method
@@ -69,8 +78,8 @@ def api_request(method, params={}):
         if "error" in result:
             if result["error"] == 29:
                 if DEBUG:
-                    print "--- rate limit exceeded, now sleep 10 seconds ---"
-                gevent.sleep(10)  # just breathe
+                    print "--- rate limit exceeded, now sleep 5 seconds ---"
+                gevent.sleep(5)  # just breathe
                 # gevent.sleep(5 * 60) # just breathe
                 return api_request(method, params)
             else:

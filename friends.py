@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from utils import api_request, save, iter_pool_do, get_track_releasetime
+from utils import request_url
 from functools import wraps
 import cPickle as pickle
 import sqlite3
@@ -159,7 +160,136 @@ def get_all_friends():
     return all_friends
 
 
-def get_friends_history():
+class History(object):
+    method = "user.getRecentTracks"
+    insert_sql = "insert into history values (?, ?, ?, ?, ?, ?, ?, ?)"
+    per_page = 50
+    total_user = None
+    logf = None
+    debug = True
+    cursor = None
+    conn = None
+
+    def __init__(self, username, tr_from=None, tr_to=None, target=1, index=None):
+        self.username = username
+        self.params = {'user': username}
+        if tr_from:
+            self.params['from'] = tr_from
+        if tr_to:
+            self.params['to'] = tr_to
+        self.target = target
+        self.index = index
+
+    def get_count(self):
+        params = {"limit": 1, "page": 1}
+        params.update(self.params)
+        result = api_request(self.method, params)
+        if result is None:
+            return 0
+        if "status" in result and result["status"] == 'ok':
+            gevent.sleep(2)
+            return self.get_count()
+        elif 'recenttracks' in result:
+            if '@attr' in result["recenttracks"]:
+                meta = result["recenttracks"]["@attr"]
+            else:
+                meta = result["recenttracks"]
+            return int(meta["total"].strip())
+        else:
+            return 0
+
+    def get_page(self, page):
+        params = {"limit": self.per_page, "page": page, 'extend': 1}
+        params.update(self.params)
+        r = api_request(self.method, params)
+        if r is None or "recenttracks" not in r:
+            return None
+
+        if '@attr' in r["recenttracks"]:
+            meta = r["recenttracks"]["@attr"]
+        else:
+            meta = r["recenttracks"]
+        if int(meta['page']) != page:
+            raise RuntimeError
+
+        if "track" in r["recenttracks"]:
+            result = r["recenttracks"]["track"]
+            if isinstance(result, dict):  # only one item
+                result = [result]
+        else:
+            result = None
+        return result
+
+    def log_this(self, page):
+        params = {"limit": self.per_page, "page": page, 'extend': 1}
+        params.update(self.params)
+        if self.debug:
+            print request_url(self.method, params)
+        else:
+            print >> History.logf, request_url(self.method, params)
+            History.logf.flush()
+
+    def request(self):
+        target = self.target
+        current = target - 1
+        total = self.get_count()
+        # this num isn't correct
+        total_pages = (total-1) / self.per_page + 1
+        alist = []
+        while current < total:
+            next_page, offset = divmod(current, self.per_page)
+            next_page += 1
+            try:
+                result = self.get_page(next_page)
+                print "---user=%s(%d:%d) page(%d:%d) ---" % (
+                        self.username, self.index, History.total_user,
+                        next_page, total_pages)
+            except RuntimeError:
+                break
+            if result is not None:
+                alist.extend(result[offset:])
+            else:
+                self.log_this(next_page)
+
+            current += (self.per_page - offset)
+            if len(alist) >= 100:
+                target = current + 1
+                self.update_db(alist, target)
+                del alist[:]
+
+        if alist:
+            # delete target record
+            self.update_db(alist)
+
+        return True
+
+    def convert_recent_info(self, recent_track):
+        user = self.username
+        track = recent_track['name'] if 'name' in recent_track else None
+        artist = recent_track['artist']['#text'] if 'artist' in recent_track and '#text' in recent_track['artist'] else None
+        streamable = recent_track['streamable'] if 'streamable' in recent_track else None
+        album = recent_track['album']['#text'] if 'album' in recent_track else None
+        url = recent_track['url'] if 'url' in recent_track else None
+        loved = recent_track['loved'] if 'loved' in recent_track else 0
+        datetime = recent_track['date']['uts'] if 'date' in recent_track and 'uts' in recent_track['date'] else None
+        return (user, track, artist, streamable, album, url, loved, datetime)
+
+    def update_db(self, alist, target=None):
+        if self.debug:
+            print "--- update %d records to db ---" % len(alist)
+        History.cursor.executemany(self.insert_sql,
+                           map(self.convert_recent_info, alist))
+        if target is None:
+            History.cursor.execute("delete from meta_info where name = ?",
+                                   (self.username,))
+        else:
+            History.cursor.execute(
+                    "update meta_info set target = ? where name = ?",
+                    (target, self.username))
+        History.conn.commit()
+
+
+def prepare_history_db(filename):
     conn = sqlite3.connect('data/friends_listened_history.db')
     cursor = conn.cursor()
     cursor.executescript("""
@@ -173,57 +303,58 @@ def get_friends_history():
             loved,
             datetime
         );
+        create table if not exists meta_info (
+            name,
+            left_time,
+            right_time,
+            target
+        );
     """)
-    friends = get_all_friends()
-    tracks = get_tracks()
-    # week 19 means before 6 May
-    end_timestamp = timestamp_of_nth_week(19)
+    cursor.execute("select count(*) from meta_info;")
+    count1 = cursor.fetchone()[0]
+    cursor.execute("select count(*) from history;")
+    count2 = cursor.fetchone()[0]
+    # no record, it means run from scratch
+    if count1 == 0 and count2 == 0:
+        for l in open("data/time_range/" + filename):
+            l = l.decode('utf-8').strip()
+            tmp = l.split('|')
+            tmp.append(1)
+            cursor.execute("insert into meta_info values (?, ?, ?, ?)",
+                               tuple(tmp))
+        conn.commit()
 
-    save_file = 'tmp/save_for_friends_history.pkl'
-    range_file = 'tmp/save_for_time_range.pkl'
+    History.conn = conn
+    History.cursor = cursor
+    return (cursor, conn)
 
-    if os.path.exists(save_file):
-        obj = pickle.load(open(save_file))
-        last_index1 = obj['index1']
-        next_index2 = obj['index2']
-        already_fetched = obj['already']
 
-        range_obj = pickle.load(open(range_file))
-        history_time_range = range_obj['history_time_range']
-    else:
-        last_index1 = 0
-        next_index2 = 0
-        already_fetched = set()
-        history_time_range = {}
-        current_time_range = {}
+def restore_from_db(cursor):
+    alist = []
+    cursor.execute("select * from meta_info;")
+    for row in cursor:
+        alist.append(row)
+    return alist
 
-    for index1, friend in enumerate(friends[last_index1:], start=1+last_index1):
-        time_range = (end_timestamp, end_timestamp)
-        for index2, track in enumerate(tracks[next_index2:], start=1+next_index2):
-            begin_timestamp = get_track_releasetime(track)
-            track_range = (begin_timestamp, end_timestamp)
 
-            update_history(friend, track_range, time_range, cursor)
+def dispatch_one_user(args):
+    index, param = args
+    return History(*param, index=index).request()
 
-            save_obj = {
-                'index1': index1-1,
-                'index2': index2,
-            }
 
-            connection.commit()
-            save(save_file, save_obj)
-        # prepare for next track
-        next_index2 = 0
-
-def update_history(user, new_range, old_range, cursor):
-    new_left, new_right = new_range
-    old_left, old_right = old_range
-    if new_left < old_left:
-        fetch_range(new_left, old_left)
-    if new_right > old_right:
-        fetch_range(old_right, new_right)
-    return
+def get_friends_history(filename):
+    cursor, conn = prepare_history_db(filename)
+    ranges = restore_from_db(cursor)
+    History.total_user = len(ranges)
+    range_with_index = list(enumerate(ranges, start=1))
+    gen = iter_pool_do(dispatch_one_user, range_with_index, cap=5)
+    for g in gen:
+        pass
 
 
 if __name__ == '__main__':
-    get_playcount_and_love()
+    get_friends_history("user00")
+    LOG_FILE = "log/friends_history.txt"
+    History.logf = open(LOG_FILE, "a")
+    History.debug = False
+    History.logf.flush()
