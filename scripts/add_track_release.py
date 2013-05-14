@@ -8,7 +8,7 @@ def strptime(date_string, time_format="%d %b %Y, %H:%M"):
 
 def timestamp(date_string):
     dt = strptime(date_string)
-    epoch = datetime.fromtimestamp(0)
+    epoch = datetime.utcfromtimestamp(0)
     seconds = int((dt - epoch).total_seconds())
     return seconds
 

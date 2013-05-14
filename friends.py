@@ -222,6 +222,7 @@ def update_history(user, new_range, old_range, cursor):
         fetch_range(new_left, old_left)
     if new_right > old_right:
         fetch_range(old_right, new_right)
+    return
 
 
 if __name__ == '__main__':

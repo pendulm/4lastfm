@@ -35,13 +35,17 @@ class History(object):
     insert_sql = "insert into history values (?, ?, ?, ?, ?, ?, ?, ?)"
     time_range = [None, None]
 
-    def __init__(self, username):
+    def __init__(self, username, tr_from=None, tr_to=None):
         self.username = username
         self.params = {'user': username, 'extend':1}
         if self.time_range[0]:
             self.params['from'] = self.time_range[0]
         if self.time_range[1]:
             self.params['to'] = self.time_range[1]
+        if tr_from:
+            self.params['from'] = tr_from
+        if tr_to:
+            self.params['to'] = tr_to
 
     def request_first(self, limit=1):
         params = {"limit": limit, "page": 1}
@@ -206,17 +210,34 @@ def get_week_range_history(targets_file):#, start, end):
 
 # TODO eliminate global
 if __name__ == "__main__":
-    tracks_file = 'data/tracks_info.pkl'
-    tracks_info = cPickle.load(open(tracks_file))
+    # tracks_file = 'data/tracks_info.pkl'
+    # tracks_info = cPickle.load(open(tracks_file))
 
-    from utils import get_track_releasetime, timestamp_of_nth_week
-    start_timestamp = min(get_track_releasetime(t) for t in tracks_info)
-    end_timestamp = timestamp_of_nth_week(19)
-    History.time_range = [start_timestamp, end_timestamp]
+    # from utils import get_track_releasetime, timestamp_of_nth_week
+    # start_timestamp = min(get_track_releasetime(t) for t in tracks_info)
+    # end_timestamp = timestamp_of_nth_week(19)
+    # History.time_range = [start_timestamp, end_timestamp]
 
-    target_friends = cPickle.load(open("data/week_b12/target_friends.pkl"))
-    all_friends = set()
-    for t, fs in target_friends.iteritems():
-        all_friends.update(fs)
-    count_total_record(list(all_friends))
+    # target_friends = cPickle.load(open("data/week_b12/target_friends.pkl"))
+    # all_friends = set()
+    # for t, fs in target_friends.iteritems():
+        # all_friends.update(fs)
+    # count_total_record(list(all_friends))
+    ranges = []
+    for l in open("data/friends_time_range.txt"):
+        l = l.decode('utf-8').strip()
+        ranges.append(tuple(l.split('|')))
+    users_num = len(ranges)
+    record_count = 0
+    user_count = 0
+    bobj = BatchRegulate(lambda r: History(*r).get_history_count(), ranges, 5)
+    for user, _, _ in ranges:
+        user_count += 1
+        n = next(bobj)
+        if n is None:
+            n = 0
+        record_count += n
+        print "count (%d/%d) users=%s listened=%d --- tracks count = %d ---" % (
+                user_count, users_num, user, n, record_count)
+
 
