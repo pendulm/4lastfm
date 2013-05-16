@@ -163,10 +163,10 @@ def get_all_friends():
 class History(object):
     method = "user.getRecentTracks"
     insert_sql = "insert into history values (?, ?, ?, ?, ?, ?, ?, ?)"
-    per_page = 50
+    per_page = 30
     total_user = None
     logf = None
-    debug = True
+    debug = False
     cursor = None
     conn = None
 
@@ -223,9 +223,8 @@ class History(object):
     def log_this(self, page):
         params = {"limit": self.per_page, "page": page, 'extend': 1}
         params.update(self.params)
-        if self.debug:
-            print request_url(self.method, params)
-        else:
+        print "--- error request ---"
+        if not self.debug:
             print >> History.logf, request_url(self.method, params)
             History.logf.flush()
 
@@ -275,8 +274,7 @@ class History(object):
         return (user, track, artist, streamable, album, url, loved, datetime)
 
     def update_db(self, alist, target=None):
-        if self.debug:
-            print "--- update %d records to db ---" % len(alist)
+        print "--- update %d records to db ---" % len(alist)
         History.cursor.executemany(self.insert_sql,
                            map(self.convert_recent_info, alist))
         if target is None:
@@ -347,14 +345,14 @@ def get_friends_history(filename):
     ranges = restore_from_db(cursor)
     History.total_user = len(ranges)
     range_with_index = list(enumerate(ranges, start=1))
-    gen = iter_pool_do(dispatch_one_user, range_with_index, cap=5)
+    gen = iter_pool_do(dispatch_one_user, range_with_index, cap=2)
     for g in gen:
         pass
 
 
 if __name__ == '__main__':
-    get_friends_history("user00")
     LOG_FILE = "log/friends_history.txt"
-    History.logf = open(LOG_FILE, "a")
     History.debug = False
+    History.logf = open(LOG_FILE, "a")
+    get_friends_history("user00")
     History.logf.flush()
