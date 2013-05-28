@@ -231,6 +231,7 @@ class History(object):
     def request(self):
         target = self.target
         current = target - 1
+        # if the count is 0, record wouldn't be deleted
         total = self.get_count()
         # this num isn't correct
         total_pages = (total-1) / self.per_page + 1
@@ -354,5 +355,5 @@ if __name__ == '__main__':
     LOG_FILE = "log/friends_history.txt"
     History.debug = False
     History.logf = open(LOG_FILE, "a")
-    get_friends_history("user00")
+    get_friends_history("user01")
     History.logf.flush()
