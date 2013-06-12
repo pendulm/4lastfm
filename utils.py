@@ -289,3 +289,26 @@ def timestamp_of_nth_week(week, year=None):
 
 def get_track_releasetime(track):
     return timestamp(track['releasedate'])
+
+class Color(object):
+    END = '\033[0m'
+    RED = '\033[0;31m'
+    GREEN = '\033[0;32m'
+    YELLOW = '\033[0;33m'
+    BLUE = '\033[0;34m'
+
+    @classmethod
+    def warn(cls, msg):
+        return cls.RED + msg + cls.END
+
+    @classmethod
+    def fail(cls, msg):
+        return cls.YELLOW + msg + cls.END
+
+    @classmethod
+    def emphasise(cls, msg):
+        return cls.GREEN + msg + cls.END
+
+    @classmethod
+    def ok(cls, msg):
+        return cls.BLUE + msg + cls.END
