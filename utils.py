@@ -8,17 +8,30 @@ import time
 import cPickle
 import random
 from datetime import datetime, timedelta
+from itertools import cycle
 from collections import deque
 from config import lastfmtoken
 
-API_REQUEST_URL = ('http://ws.audioscrobbler.com/2.0/?method=%%s\
-&api_key=%s&format=json') % lastfmtoken
+API_REQUEST_URL = 'http://ws.audioscrobbler.com/2.0/?method=%%s\
+&api_key=%s&format=json'
 DEBUG = True
 _Sessions = [requests.session() for i in range(10)]
 _Queue = gevent.queue.Queue()
 for s in _Sessions:
     _Queue.put(s)
 
+
+def request_base_url_generator():
+    base_urls = [API_REQUEST_URL % t for t in lastfmtoken]
+    urls_gen = cycle(base_urls)
+    for t in urls_gen:
+        yield t
+
+def get_request_base_url():
+    if not hasattr(get_request_base_url, "gen"):
+        get_request_base_url.gen = request_base_url_generator()
+    gen = get_request_base_url.gen
+    return next(gen)
 
 def curren_time():
     return time.strftime("[%Y-%m-%d %H:%M:%S]", time.localtime())
@@ -59,7 +72,7 @@ def mild_request(url, params={}, timeout=5, max_retry=10):
     return r
 
 def request_url(method, params={}):
-    url = API_REQUEST_URL % method
+    url = get_request_base_url() % method
     req = requests.Request()
     req.method = 'GET'
     req.url = url
@@ -69,7 +82,7 @@ def request_url(method, params={}):
 
 
 def api_request(method, params={}):
-    url = API_REQUEST_URL % method
+    url = get_request_base_url() % method
     r = mild_request(url, params)
     if r is None:
         return None

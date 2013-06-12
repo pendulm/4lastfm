@@ -1,0 +1,5 @@
+install libxml2 and libxslt
+pip install -r requirements
+BUG MAYBE
+http://stackoverflow.com/questions/15924353/gevent-redis-py-systemerror-null-result-without-error-in-pyobject-call
+CFLAGS="-O0" pip install greenlet==0.4.0

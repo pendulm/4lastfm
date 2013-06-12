@@ -171,6 +171,7 @@ class History(object):
     conn = None
 
     def __init__(self, username, tr_from=None, tr_to=None, target=1, index=None):
+        # target stand for target page, this is a bad name
         self.username = username
         self.params = {'user': username}
         if tr_from:
