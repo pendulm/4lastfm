@@ -292,10 +292,10 @@ def get_track_releasetime(track):
 
 class Color(object):
     END = '\033[0m'
-    RED = '\033[0;31m'
-    GREEN = '\033[0;32m'
-    YELLOW = '\033[0;33m'
-    BLUE = '\033[0;34m'
+    RED = '\033[1;31m'
+    GREEN = '\033[1;32m'
+    YELLOW = '\033[1;33m'
+    BLUE = '\033[1;34m'
 
     @classmethod
     def warn(cls, msg):
