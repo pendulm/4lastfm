@@ -44,7 +44,9 @@ def mild_request(url, params={}, timeout=5, max_retry=10):
         try:
             # r = session.get(url, timeout=timeout, params=params)
             if DEBUG and try_num > 1:
-                print "--- retry number = %d ---" % try_num
+                print "--- %s number = %s ---" % (
+                        Color.emphasise("retry"),
+                        Color.emphasise(try_num))
             to = gevent.Timeout(timeout)
             to.start()
             r = session.get(url, params=params)
@@ -54,7 +56,7 @@ def mild_request(url, params={}, timeout=5, max_retry=10):
         except gevent.timeout.Timeout as e:
             if e is to:
                 if DEBUG and try_num > max_retry:
-                    print "--- now give up ---"
+                    print "--- %s ---" % Color.fail("now give up")
                     _Queue.put(session)
                     return None
                 try_num += 1
@@ -62,8 +64,10 @@ def mild_request(url, params={}, timeout=5, max_retry=10):
             else:
                 raise  # not my timeout
         except requests.ConnectionError:
-            print "--- url=%s and params=%s cause connection error ---" % (
-                url, params)
+            print "--- url=%s and params=%s cause connection %s ---" % (
+                Color.emphasise(url),
+                Color.emphasise(params),
+                Color.fail("error"))
             _Queue.put(session)
             return None
         finally:
@@ -91,7 +95,8 @@ def api_request(method, params={}):
         if "error" in result:
             if result["error"] == 29:
                 if DEBUG:
-                    print "--- rate limit exceeded, now sleep 5 seconds ---"
+                    print "--- %s, now sleep 5 seconds ---" % (
+                            Color.warn("rate limit exceeded"),)
                 gevent.sleep(5)  # just breathe
                 # gevent.sleep(5 * 60) # just breathe
                 return api_request(method, params)
@@ -298,17 +303,17 @@ class Color(object):
     BLUE = '\033[1;34m'
 
     @classmethod
-    def warn(cls, msg):
-        return cls.RED + msg + cls.END
-
-    @classmethod
     def fail(cls, msg):
-        return cls.YELLOW + msg + cls.END
+        return "%s%s%s" % (cls.RED, msg, cls.END)
 
     @classmethod
-    def emphasise(cls, msg):
-        return cls.GREEN + msg + cls.END
+    def warn(cls, msg):
+        return "%s%s%s" % (cls.YELLOW, msg, cls.END)
 
     @classmethod
     def ok(cls, msg):
-        return cls.BLUE + msg + cls.END
+        return "%s%s%s" % (cls.GREEN, msg, cls.END)
+
+    @classmethod
+    def emphasise(cls, msg):
+        return "%s%s%s" % (cls.BLUE, msg, cls.END)

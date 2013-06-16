@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from utils import api_request, save, iter_pool_do, get_track_releasetime
-from utils import request_url
+from utils import request_url, Color
 from functools import wraps
 import cPickle as pickle
 import sqlite3
@@ -224,8 +224,8 @@ class History(object):
     def log_this(self, page):
         params = {"limit": self.per_page, "page": page, 'extend': 1}
         params.update(self.params)
-        print "--- error request ---"
-        if not self.debug:
+        print "--- %s ---" % Color.fail("error request")
+        if self.debug is False:
             print >> History.logf, request_url(self.method, params)
             History.logf.flush()
 
@@ -276,7 +276,9 @@ class History(object):
         return (user, track, artist, streamable, album, url, loved, datetime)
 
     def update_db(self, alist, target=None):
-        print "--- update %d records to db ---" % len(alist)
+        if self.debug == True:
+            return
+        print "--- %s %d records to db ---" % (Color.ok("update") ,len(alist))
         History.cursor.executemany(self.insert_sql,
                            map(self.convert_recent_info, alist))
         if target is None:
@@ -347,7 +349,7 @@ def get_friends_history(filename):
     ranges = restore_from_db(cursor)
     History.total_user = len(ranges)
     range_with_index = list(enumerate(ranges, start=1))
-    gen = iter_pool_do(dispatch_one_user, range_with_index, cap=2)
+    gen = iter_pool_do(dispatch_one_user, range_with_index, cap=4)
     for g in gen:
         pass
 
@@ -356,5 +358,5 @@ if __name__ == '__main__':
     LOG_FILE = "log/friends_history.txt"
     History.debug = False
     History.logf = open(LOG_FILE, "a")
-    get_friends_history("user01")
+    get_friends_history("user04")
     History.logf.flush()

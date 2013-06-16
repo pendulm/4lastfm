@@ -84,7 +84,8 @@ def get_week_range_history(start_week, end_week):
 
 
 def update_targets_history(week):
-    History.per_page = 40
+    # History.debug = True
+    History.per_page = 30
     LOG_FILE = "data/week_%s/targets_listend_history_week_%s_%s.log" % (
                week, week-1, week)
     History.logf = open(LOG_FILE, "a")
@@ -94,5 +95,4 @@ def update_targets_history(week):
 
 
 if __name__ == "__main__":
-    week = 24
-    update_targets_history(week)
+    update_targets_history(11)
