@@ -349,7 +349,7 @@ def get_friends_history(filename):
     ranges = restore_from_db(cursor)
     History.total_user = len(ranges)
     range_with_index = list(enumerate(ranges, start=1))
-    gen = iter_pool_do(dispatch_one_user, range_with_index, cap=4)
+    gen = iter_pool_do(dispatch_one_user, range_with_index, cap=10)
     for g in gen:
         pass
 
@@ -358,5 +358,5 @@ if __name__ == '__main__':
     LOG_FILE = "log/friends_history.txt"
     History.debug = False
     History.logf = open(LOG_FILE, "a")
-    get_friends_history("user04")
+    get_friends_history("user03")
     History.logf.flush()
