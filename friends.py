@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from utils import api_request, save, iter_pool_do, get_track_releasetime
-from utils import request_url, Color
+from utils import request_url, Color, DBWrapper
 from functools import wraps
 import cPickle as pickle
 import sqlite3
@@ -352,6 +352,7 @@ def get_friends_history(filename):
     gen = iter_pool_do(dispatch_one_user, range_with_index, cap=10)
     for g in gen:
         pass
+
 
 
 if __name__ == '__main__':

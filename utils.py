@@ -7,6 +7,7 @@ import requests
 import time
 import cPickle
 import random
+import sqlite3
 from datetime import datetime, timedelta
 from itertools import cycle
 from collections import deque
@@ -317,3 +318,55 @@ class Color(object):
     @classmethod
     def emphasise(cls, msg):
         return "%s%s%s" % (cls.BLUE, msg, cls.END)
+
+
+class DBWrapper(object):
+    def __init__(self, dbfile):
+        self.mark = 1
+        self.count = 1
+        self.conn = sqlite3.connect(dbfile)
+        self.cur = self.conn.cursor()
+
+    def executescript(self, sql):
+        self.cur.executescript(sql)
+        self.mark = 1
+        self.count = 1
+
+    def execute(self, sql, tuple_val=None):
+        if tuple_val:
+            self.cur.execute(sql, tuple_val)
+        else:
+            self.cur.execute(sql)
+
+        if self.mark == 2000:
+            self.commit()
+            self.mark = 1
+            # print("%d" % self.count)
+        else:
+            self.mark += 1
+        self.count += 1
+        return self.cur
+
+    def executemany(self, sql, lst):
+        self.cur.executemany(sql, lst)
+        self.count += len(lst)
+        self.mark += len(lst)
+        if self.mark >= 2000:
+            self.commit()
+            self.mark = 1
+        return self.cur
+
+    def commit(self):
+        self.conn.commit()
+
+def simple_cache(func):
+    # python3 use nonlocal
+    cache_container = []
+    def inner(*args, **kwargs):
+        if len(cache_container) == 0:
+            result = func(*args, **kwargs)
+            cache_container.append(result)
+        else:
+            result = cache_container[0]
+        return result
+    return inner
