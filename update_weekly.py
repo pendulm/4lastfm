@@ -12,10 +12,10 @@ def update_all(week):
     update_targets(week)
     update_top_track(week)
     update_targets_history(week)
-    scheduling_scrape(week)
+    # scheduling_scrape(week)
 
 
 if __name__ == "__main__":
-    week = 27
+    week = 28
     update_all(week)
 

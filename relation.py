@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from utils import api_request, save, iter_pool_do, get_track_releasetime
+from utils import api_request, iter_pool_do
 from utils import request_url, Color, DBWrapper, simple_cache
 from utils import timestamp_of_nth_week
 from collections import defaultdict
@@ -250,5 +250,5 @@ def scheduling_scrape(week):
 
 
 if __name__ == "__main__":
-    week = 24
+    week = 12
     scheduling_scrape(week)
