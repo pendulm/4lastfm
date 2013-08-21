@@ -16,6 +16,6 @@ def update_all(week):
 
 
 if __name__ == "__main__":
-    week = 28
+    week = 31
     update_all(week)
 

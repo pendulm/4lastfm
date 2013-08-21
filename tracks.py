@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from utils import api_request, gevent_do, save, is_recent_s
+from utils import DBWrapper, Color
 import gevent
 import cPickle
 import os.path
@@ -128,6 +129,42 @@ def get_track_shouts_num(info, limit=1, page=1):
         return 0
 
 
+def parse_shout_record(record):
+    if 'error' in first_result:
+        pass
+    elif 'shouts' in first_result:
+       first_result = first_result['shouts']
+       if 'shout' in first_result:
+           total = int(first_result['@attr']['total'])
+
+def get_all_shouts(info, db, all_, index, limit=30):
+    service = "track.getShouts"
+    page = 1
+    params = { 'limit': limit, 'page': page,
+            'track': info['name'], 'artist': info['artist']['name']}
+
+    total_pages = 1
+    while page <= total_pages:
+        result = api_request(service, params)
+        if page > 1:
+            print Color.ok("----get page(%d/%d) for %s(%d/%d)-----" % (page, total_pages, info['name'], index, all_))
+        if 'error' in result:
+            print Color.fail("--------error when get shout--------")
+        elif 'shouts' in result:
+            inner_result = result['shouts']
+            if 'shout' in inner_result:
+                total_pages = int(inner_result['@attr']['totalPages'])
+                shouts = inner_result['shout']
+                if isinstance(shouts, list):
+                    db.executemany("insert into shouts values (?,?,?,?,?,?)", [(info['id'], info['name'],info['artist']['name'], shout['body'], shout['author'], shout['date']) for shout in shouts])
+                else: # dict, only one item
+                    db.execute("insert into shouts values (?,?,?,?,?,?)", (info['id'], info['name'],info['artist']['name'], shouts['body'], shouts['author'], shouts['date']))
+
+            elif '#text' in inner_result:
+                print Color.emphasise("--------no shout for this track------")
+
+        page += 1
+        params['page'] = page
 
 
 def get_track_fullinfo(info):
@@ -193,6 +230,22 @@ def update_top_track(week):
 
 
 if __name__ == "__main__":
-    if True:
-        update_top_track(24)
+    # if True:
+        # update_top_track(24)
+
+    tracks = cPickle.load(open("data/tracks_info.pkl"))
+    db = DBWrapper("data/shouts_of_tracks.db")
+    db.executescript("""create table if not exists shouts (
+                track_id,
+                track_name,
+                artist,
+                shout_body,
+                shout_author,
+                shout_time)
+            """)
+    index = 1
+    for track in tracks:
+        get_all_shouts(track, db, len(tracks), index)
+        index += 1
+    db.commit()
 

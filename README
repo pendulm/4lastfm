@@ -1,4 +1,4 @@
-install libxml2 and libxslt
+install libxml2, libxslt and libevent
 pip install -r requirements
 BUG MAYBE
 http://stackoverflow.com/questions/15924353/gevent-redis-py-systemerror-null-result-without-error-in-pyobject-call

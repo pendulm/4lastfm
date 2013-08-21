@@ -25,7 +25,7 @@ def get_user_info(username):
     return result['user']
 
 
-def get_user_friends(username, limit=50, page=0):
+def get_user_friends(username, limit=30, page=0):
     friends_dict = {}
     fetch_all = False
 
